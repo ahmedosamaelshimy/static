@@ -1,163 +1,174 @@
-# AzureHunt Walkthrough
+# Enhanced AzureHunt Walkthrough: Investigating Suspicious Activity in Azure with ELK
 
-### Investigating Suspicious Activity and Potential Compromise in Azure with ELK
-
-In Azure environments, understanding user activities, configuration changes, and data access patterns is key to detecting and responding to security threats. When unexpected activity arises, especially from unusual locations, logs are invaluable in tracing behavior and identifying potential breaches. This walkthrough demonstrates a practical approach to investigating suspicious activity using three primary logs—`Azure AD Logs`, `Activity Logs`, and `Blob Logs`—integrated with ELK (Elasticsearch, Logstash, and Kibana). Together, these tools help SOC analysts gain full visibility, assess the threat scope, and implement containment measures.
+This walkthrough provides a structured approach for SOC analysts to investigate suspicious activity in an Azure environment using Elastic (ELK) for log analysis. Covering three key logs—Azure AD Logs, Activity Logs, and Blob Logs—the guide details the steps to analyze unexpected activity, trace potential compromise points, and establish a complete incident response.
 
 ---
 
-### Overview of Azure Logs for Security Monitoring
+### Log Overview and Their Role in Threat Detection
 
-- **Azure AD Logs** capture authentication events, user sign-ins, and changes to roles and permissions, allowing analysts to detect unauthorized access and monitor login patterns.
-- **Activity Logs** track changes to Azure resources and administrative actions, offering a detailed view of modifications and access across the infrastructure.
-- **Blob Logs** record access events in Azure Blob Storage, helping detect unauthorized file access and potential data exfiltration attempts.
+In Azure, logs are crucial to understanding activities, configuration changes, and data access, enabling effective monitoring, detection, and response. This walkthrough utilizes:
 
-When forwarded to ELK, these logs become searchable, filterable, and visualizable, making it easier to investigate incidents, analyze trends, and take action.
+- **Azure AD Logs**: Focuses on identity-related events, tracking user access, authentication attempts, and role modifications.
+- **Azure Activity Logs**: Captures management-level changes across resources, including configuration and access-related actions.
+- **Blob Logs**: Monitors data access events, tracking file interactions within Blob Storage, especially for exfiltration detection.
+
+Using ELK, SOC analysts can integrate these logs, conduct fast searches, and create visualizations to clarify attack scope and impact.
 
 ---
 
-### Step-by-Step Investigation
+### Step-by-Step Incident Analysis
 
-#### 1. Identify the Country of Origin for Suspicious Activity
+#### 1. **Identify the Geographic Origin of Suspicious Activity**
 
-Since the organization operates primarily in the U.S., any logins or access attempts from unexpected locations may indicate unauthorized activity. Use the `source.geo.country_name` field to identify the country associated with the suspicious activity, determining whether it warrants deeper investigation.
+Analyze the geographic origin of the activity, as access attempts from an unusual location could signal unauthorized access. Use the `source.geo.country_name` field in ELK to identify the country associated with the activity, establishing whether it warrants further investigation.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
-source.geo.country_name: *
-```
-*Review results and verify the location against other fields.*
-
----
-
-#### 2. Establish a Timeline of Events
-
-Next, create a timeline of the incident. Sorting logs by timestamp reveals the sequence of events, allowing analysts to understand how quickly the attacker moved and which actions were prioritized. This timeline provides essential context for the overall attack flow.
-
-**KQL Query:**
-```KQL
-source.geo.country_name: "<attacker's_country>"
-```
-*Sort by oldest timestamp to capture the first event.*
-
----
-
-#### 3. Identify the Initial Compromised Account
-
-Use Azure AD Logs to focus on authentication events, identifying which user account was first compromised. Filter by `event.category` as "authentication" and `event.outcome` as "success" to isolate the account and trace initial access.
-
-**KQL Query:**
-```KQL
-source.geo.country_name: "<attacker's_country>" AND event.category: "authentication" AND event.outcome: "success"
+source.geo.country_name: "<country_name>"
 ```
 
 ---
 
-#### 4. Investigate Blob Storage Access
+#### 2. **Establish a Timeline of Events**
 
-Blob Logs in ELK help determine if sensitive files within Blob Storage were accessed. Filter by `operationName` set to "GetBlob" to see if data exfiltration or recon activities occurred. This step highlights which files were accessed and allows assessment of the potential impact.
+Creating a timeline of events reveals the sequence and speed of actions, allowing analysts to track the flow of suspicious activities. Sorting logs by timestamp helps identify when the attacker gained initial access and subsequent actions.
 
-**KQL Query:**
+**KQL Query**:
+```KQL
+source.geo.country_name: "<country_name>"
+```
+*Sort by the earliest timestamp to capture the first suspicious event.*
+
+---
+
+#### 3. **Identify the Initial Compromised Account**
+
+Identifying the first compromised account provides insights into the attacker’s entry point. Filter Azure AD Logs in ELK to isolate successful authentication events from unusual locations, helping to identify compromised accounts.
+
+**KQL Query**:
+```KQL
+source.geo.country_name: "<country_name>" AND event.category: "authentication" AND event.outcome: "success"
+```
+
+---
+
+#### 4. **Investigate Blob Storage Access**
+
+To determine if the attacker accessed sensitive data, examine Blob Logs for `GetBlob` events, which indicate file access. This analysis helps identify potential data exfiltration or reconnaissance activities targeting sensitive files.
+
+**KQL Query**:
 ```KQL
 azure.eventhub.operationName: "GetBlob"
 ```
 
 ---
 
-#### 5. Identify the Compromised Storage Account
+#### 5. **Identify the Compromised Storage Account**
 
-Examine the `accountName` field in the Blob Logs to identify the specific storage account involved. Knowing the storage account helps prioritize follow-up actions, especially if sensitive or regulated data is involved.
+Understanding which storage accounts were accessed or compromised is essential, especially if they contain sensitive data. Look for specific storage accounts in the Blob Logs using the `accountName` field.
 
-*Check `azure.eventhub.properties.accountName`.*
+*Check `azure.eventhub.properties.accountName` for the involved accounts.*
 
 ---
 
-#### 6. Identify Additional Compromised Accounts
+#### 6. **Identify Additional Compromised Accounts**
 
-Attackers often target multiple accounts. Review AD Logs for similar successful authentication events originating from the suspicious location, ensuring that all compromised accounts are addressed in your response.
+Attackers often spread access by compromising multiple accounts. Search for other successful authentication events from unusual locations within Azure AD Logs to ensure all impacted accounts are identified.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
-source.geo.country_name: "<attacker's_country>" AND event.category: "authentication" AND event.outcome: "success"
+source.geo.country_name: "<country_name>" AND event.category: "authentication" AND event.outcome: "success"
 ```
 
 ---
 
-#### 7. Review Virtual Machine (VM) Activity
+#### 7. **Review Virtual Machine (VM) Activity**
 
-Activity Logs reveal actions taken across resources like VMs. Attackers may start or modify VMs to deploy malicious tools or establish persistence. Filter for VM start actions to check for irregular activity, and use the resource name to identify specific VMs.
+Azure Activity Logs are useful for identifying malicious activity on virtual machines, such as starting VMs to deploy tools or establish persistence. Filter for VM start actions to check if any irregular actions were taken on virtual machines.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
 azure.activitylogs.identity.authorization.action: "Microsoft.Compute/virtualMachines/start/action"
 ```
+*Check the `azure.resource.name` field for specific VMs involved.*
 
 | Operation | Description |
 | --- | --- |
 | Microsoft.Compute/virtualMachines/start/action | Starts the virtual machine |
 | Microsoft.Compute/virtualMachines/restart/action | Restarts the virtual machine |
 | Microsoft.Compute/virtualMachines/write | Creates or updates a virtual machine |
-| Microsoft.Compute/virtualMachines/deallocate/action | Powers off the VM, releasing compute resources |
-| Microsoft.Compute/virtualMachines/extensions/write | Creates or updates VM extensions |
-| Microsoft.Compute/virtualMachineScaleSets/write | Starts instances in a scale set |
+| Microsoft.Compute/virtualMachines/deallocate/action | Powers off and deallocates the VM |
+| Microsoft.Compute/virtualMachines/extensions/write | Creates or updates a VM extension |
+| Microsoft.Compute/virtualMachineScaleSets/write | Starts instances in a VM scale set |
 
 ---
 
-#### 8. Check for Data Export Activity
+#### 8. **Check for Data Export Activity**
 
-Data export actions often signal attempts to exfiltrate sensitive data. Use Activity Logs to search for "export" actions, which reveal if the attacker extracted critical data. This insight helps assess impact and prioritize containment actions.
+Data export activity often signals exfiltration attempts. Use Azure Activity Logs in ELK to detect any export operations, which could indicate attempts to move data outside the Azure environment.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
 azure.activitylogs.identity.authorization.action: *export*
 ```
-*Check `azure.resource.name` for details on the specific database involved.*
+*Check `azure.resource.name` for the database or resource involved.*
 
 ---
 
-#### 9. Detect Unauthorized Persistence Mechanisms
+#### 9. **Detect Unauthorized Persistence Mechanisms**
 
-Attackers commonly create persistence by adding user accounts or modifying roles. Search AD Logs for "Add" operations to identify new accounts or roles created to maintain unauthorized access.
+Attackers may attempt to maintain access by creating new user accounts or roles. Investigate account creation events within Azure AD Logs to detect any unauthorized persistence mechanisms.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
 azure.auditlogs.operation_name: "Add User"
 ```
 
 ---
 
-#### 10. Review Role Assignments for Escalated Privileges
+#### 10. **Review Role Assignments for Privilege Escalation**
 
-Role assignments are crucial to understanding the attacker’s level of access. Check Activity Logs for role-related actions, particularly "Owner" assignments, which increase the impact of the breach. Review the `authorization.evidence.role` field for specific role actions.
+Role assignments reveal if the attacker gained elevated privileges. Analyze Activity Logs for role-related actions to identify any unauthorized role assignments, particularly for high-level roles like "Owner."
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
 azure.activitylogs.operation_name: "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
 ```
+*Check `azure.activitylogs.identity.authorization.evidence.role` for specific roles assigned.*
 
 ---
 
-#### 11. Verify Successful Login Timestamps
+#### 11. **Verify Successful Login Timestamps**
 
-Finally, review successful login timestamps to complete the incident timeline, showing when the attacker accessed the environment and how long they remained active. This timeline provides insight into the attack duration and the extent of compromise.
+Finally, review the timestamps of successful logins to create a complete incident timeline. This helps determine how long the attacker had access and the extent of their activity, forming a basis for a detailed incident report.
 
-**KQL Query:**
+**KQL Query**:
 ```KQL
-azure.signinlogs.identity: "<Created_User>" AND event.outcome: "success"
+azure.signinlogs.identity: "<Compromised_User>" AND event.outcome: "success"
 ```
 
 ---
 
-### Summary
+### ELK Integration for Enhanced Threat Detection
 
-This AzureHunt walkthrough demonstrates a step-by-step investigation process for suspicious activity in Azure using Azure AD Logs, Activity Logs, and Blob Logs within ELK. By following these steps, SOC analysts gain visibility into each stage of an attack—from initial access and data exfiltration to persistence tactics—enabling them to take swift, informed actions to secure the environment. Integrating these logs into ELK allows analysts to visualize, search, and filter extensive data sources, facilitating a comprehensive and efficient incident response.
+With Azure logs configured to forward to the ELK stack, SOC analysts can leverage ELK's capabilities to conduct rapid searches, apply filters, and generate meaningful visualizations. The ELK stack allows for quick analysis of extensive Azure log data, making it easier to:
 
----
+- Identify patterns and anomalies across logs.
+- Track attack progression from initial access to data access and configuration changes.
+- Execute a timely and structured incident response based on comprehensive insights.
 
-### References
+Each component of ELK plays a critical role:
 
-- Microsoft, "Azure Active Directory Reporting," https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/
-- Microsoft, "Azure Activity Logs," https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log
-- Microsoft, "Azure Storage Monitoring and Logging," https://learn.microsoft.com/en-us/azure/storage/blobs/monitor-blob-storage
-- Elastic, "Azure Module for Filebeat," https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-azure.html
-- Microsoft, "Monitoring and Troubleshooting for VMs," https://learn.microsoft.com/en-us/azure/virtual-machines/monitor-vm
+- **Elasticsearch**: Enables high-speed search across log data.
+- **Logstash**: Structures and enriches log data for accurate querying.
+- **Kibana**: Facilitates visualization, making it easier to spot anomalies and identify incident trends.
+
+### Additional Resources
+
+1. [Azure Monitoring and Management with Log Analytics](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-overview)
+2. [Azure Security Logging and Auditing Recommendations](https://learn.microsoft.com/en-us/azure/security/fundamentals/logging-auditing)
+3. [Elastic Security Solution for Azure](https://www.elastic.co/solutions/azure-security)
+4. [Investigating Security Incidents with Microsoft Sentinel](https://learn.microsoft.com/en-us/azure/sentinel/tutorial-investigate)
+5. [Azure AD Security Best Practices](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/security-best-practices)
+
+This structured approach to Azure log analysis enables SOC analysts to achieve full visibility, making it possible to uncover threats, analyze potential compromises, and respond effectively to secure the Azure environment.
