@@ -5,6 +5,20 @@ In an Azure environment, logs are the key to understanding user activities, conf
 
 This walkthrough demonstrates a practical approach to investigating a surge of suspicious activity originating from an unusual country. With your Azure environment configured to forward AD Logs, Activity Logs, and Blob Logs to ELK, you can use these logs to assess the situation from initial entry to persistent tactics, ultimately containing and remediating the threat.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### 1. Identify the Country of Origin for Suspicious Activity
 To begin, analyze the geographic source of the anomalous activity. Since your organization operates primarily in the U.S., any unexpected logins or resource access attempts from another country could signal unauthorized access. By examining the `source.geo.country_name` field in ELK, you can pinpoint the specific country associated with the activity and determine if it’s abnormal. This step establishes whether the activity warrants a deeper investigation.
 
@@ -113,20 +127,21 @@ azure.auditlogs.operation_name: "Add User"
 ```
 
 ---
----
----
 
-
-### Step 10: Review Role Assignments for Escalated Privileges
+### 10. Review Role Assignments for Escalated Privileges
 
 Role assignments are critical for understanding the access level the attacker gained. Check Activity Logs for role-related actions and review the `authorization.evidence.role` field. High-level roles like "Owner" can significantly increase the impact of the attack, and detecting these escalations helps inform containment and remediation measures.
 
 **KQL Query:**
 ```KQL
-azure.activitylogs.identity.authorization.action:*role*
+azure.activitylogs.operation_name: "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
 ```
+*Check `azure.activitylogs.identity.authorization.evidence.role` for the specific role-related actions.*
+
 
 ---
+---
+
 
 ### Step 11: Verify Successful Login Timestamps
 
@@ -134,10 +149,13 @@ Finally, reviewing timestamps of successful logins provides a complete incident 
 
 **KQL Query:**
 ```KQL
-azure.signinlogs.identity: "IT Support" AND event.outcome: "success"
+azure.signinlogs.identity: "<Created_User>" AND event.outcome: "success"
 ```
 
+
+
 ---
+
 
 This comprehensive walkthrough demonstrates how Azure AD Logs, Activity Logs, and Blob Logs in ELK can uncover the full scope of suspicious activity within Azure. By following each step, SOC analysts gain visibility into each phase of the attack, from initial access to persistence tactics, and can take swift, effective action to secure the environment. This approach not only clarifies complex incidents but also provides the insights needed for a well-rounded incident response.
 
@@ -147,3 +165,4 @@ This comprehensive walkthrough demonstrates how Azure AD Logs, Activity Logs, an
 references:
 - https://learn.microsoft.com/en-us/azure/virtual-machines/monitor-vm-reference?toc=%2Fazure%2Fvirtual-machines%2Ftoc.json
 - https://www.elastic.co/guide/en/beats/filebeat/current/exported-fields-azure.html
+- 
