@@ -1,6 +1,3 @@
-Sure! Here’s a rewritten report based on the structure you provided, focusing on Azure instead of AWS and Elastic instead of Splunk.
-
----
 
 ### Introduction to Azure Activity Logs and Elastic for Security Investigations
 
