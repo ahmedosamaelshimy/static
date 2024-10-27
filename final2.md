@@ -1,6 +1,6 @@
-# Enhanced AzureHunt Walkthrough: Investigating Suspicious Activity in Azure with ELK
+# AzureHunt Walkthrough: Investigating Suspicious Activity in Azure with ELK
 
-This walkthrough provides a structured approach for SOC analysts to investigate suspicious activity in an Azure environment using Elastic (ELK) for log analysis. Covering three key logs—Azure AD Logs, Activity Logs, and Blob Logs—the guide details the steps to analyze unexpected activity, trace potential compromise points, and establish a complete incident response.
+This walkthrough provides a structured approach for SOC analysts to investigate suspicious activity in an Azure environment using Elastic (ELK) for log analysis. Covering three key logs—`Azure AD Logs`, `Activity Logs`, and `Blob Logs`.
 
 ---
 
@@ -15,17 +15,27 @@ In Azure, logs are crucial to understanding activities, configuration changes, a
 Using ELK, SOC analysts can integrate these logs, conduct fast searches, and create visualizations to clarify attack scope and impact.
 
 ---
+### ELK Integration for Enhanced Threat Detection
+
+With Azure logs configured to forward to the ELK stack, SOC analysts can leverage ELK's capabilities to conduct rapid searches, apply filters, and generate meaningful visualizations. The ELK stack allows for quick analysis of extensive Azure log data, making it easier to:
+
+- Identify patterns and anomalies across logs.
+- Track attack progression from initial access to data access and configuration changes.
+- Execute a timely and structured incident response based on comprehensive insights.
+
+Each component of ELK plays a critical role:
+
+- **Elasticsearch**: Enables high-speed search across log data.
+- **Logstash**: Structures and enriches log data for accurate querying.
+- **Kibana**: Facilitates visualization, making it easier to spot anomalies and identify incident trends.
+
+---
 
 ### Step-by-Step Incident Analysis
 
 #### 1. **Identify the Geographic Origin of Suspicious Activity**
 
-Analyze the geographic origin of the activity, as access attempts from an unusual location could signal unauthorized access. Use the `source.geo.country_name` field in ELK to identify the country associated with the activity, establishing whether it warrants further investigation.
-
-**KQL Query**:
-```KQL
-source.geo.country_name: "<country_name>"
-```
+Analyze the geographic origin of the activity, as access attempts from an unusual location could signal unauthorized access. Check the `source.geo.country_name` field in ELK to identify the country associated with the activity, establishing whether it warrants further investigation.
 
 ---
 
@@ -149,19 +159,6 @@ azure.signinlogs.identity: "<Compromised_User>" AND event.outcome: "success"
 
 ---
 
-### ELK Integration for Enhanced Threat Detection
-
-With Azure logs configured to forward to the ELK stack, SOC analysts can leverage ELK's capabilities to conduct rapid searches, apply filters, and generate meaningful visualizations. The ELK stack allows for quick analysis of extensive Azure log data, making it easier to:
-
-- Identify patterns and anomalies across logs.
-- Track attack progression from initial access to data access and configuration changes.
-- Execute a timely and structured incident response based on comprehensive insights.
-
-Each component of ELK plays a critical role:
-
-- **Elasticsearch**: Enables high-speed search across log data.
-- **Logstash**: Structures and enriches log data for accurate querying.
-- **Kibana**: Facilitates visualization, making it easier to spot anomalies and identify incident trends.
 
 ### Additional Resources
 
