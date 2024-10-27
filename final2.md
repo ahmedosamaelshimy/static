@@ -47,7 +47,7 @@ Creating a timeline of events reveals the sequence and speed of actions, allowin
 ```KQL
 source.geo.country_name: "<country_name>"
 ```
-*Sort by the earliest timestamp to capture the first suspicious event.*
+*Sort by Old-New*
 
 ---
 
@@ -154,8 +154,9 @@ Finally, review the timestamps of successful logins to create a complete inciden
 
 **KQL Query**:
 ```KQL
-azure.signinlogs.identity: "<Compromised_User>" AND event.outcome: "success"
+azure.signinlogs.identity: "<Compromised_User>" AND event.category: "authentication" AND event.outcome: "success"
 ```
+*Sort by Old-New*
 
 ---
 
@@ -168,4 +169,3 @@ azure.signinlogs.identity: "<Compromised_User>" AND event.outcome: "success"
 4. [Investigating Security Incidents with Microsoft Sentinel](https://learn.microsoft.com/en-us/azure/sentinel/tutorial-investigate)
 5. [Azure AD Security Best Practices](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/security-best-practices)
 
-This structured approach to Azure log analysis enables SOC analysts to achieve full visibility, making it possible to uncover threats, analyze potential compromises, and respond effectively to secure the Azure environment.
